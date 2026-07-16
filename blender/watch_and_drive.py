@@ -33,6 +33,7 @@ OVERALL_SCALE = 2.0     # 整体放大倍数，改这一个就行
 PREFIX        = "LM"    # Empty 命名前缀
 MESH_NAME     = "FaceMesh"
 INTERPOLATION = 'LINEAR'
+MAX_LANDMARKS = 500       # 清理时遍历的最大 Empty 数量
 
 # 自动监听模式
 WATCH_MODE = False
@@ -99,7 +100,7 @@ def clear_previous():
 
     # 清理 Empty
     to_remove = []
-    for i in range(500):
+    for i in range(MAX_LANDMARKS):
         name = f"{PREFIX}_{i:03d}"
         obj = bpy.data.objects.get(name)
         if obj:

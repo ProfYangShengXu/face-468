@@ -263,6 +263,7 @@ let faceLandmarks = null;  // latest raw landmarks for rendering
 let showMesh = true;
 let showDots = false;
 let fpsCounter = { frames: 0, lastTime: performance.now(), value: 0 };
+const EST_FPS = 30;        // estimated FPS for buffer size calculation
 
 // ──────────────────────────────────────────────
 //  DOM refs
@@ -398,7 +399,7 @@ function render() {
 // ──────────────────────────────────────────────
 //  BUFFER
 // ──────────────────────────────────────────────
-function getMaxFrames() { return bufferSec * 30; } // estimate
+function getMaxFrames() { return bufferSec * EST_FPS; }
 
 function addToBuffer(landmarks) {
   const frame = {
@@ -442,7 +443,7 @@ function exportJSON() {
     tessellation = FaceMesh.FACEMESH_TESSELATION.map(p => [p[0], p[1]]);
   }
 
-  const avgFps = frames.length / (frames[frames.length - 1].t || 0.033);
+  const avgFps = frames.length / (frames[frames.length - 1].t || (1 / EST_FPS));
   const data = {
     meta: {
       version: '2.0',
