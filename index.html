@@ -264,6 +264,7 @@ let showMesh = true;
 let showDots = false;
 let fpsCounter = { frames: 0, lastTime: performance.now(), value: 0 };
 const EST_FPS = 30;        // estimated FPS for buffer size calculation
+const IRIS_START = 468;    // iris landmark index start (with refineLandmarks)
 
 // ──────────────────────────────────────────────
 //  DOM refs
@@ -383,9 +384,9 @@ function render() {
     // The indices 468-477 are the iris landmarks. Standard 468 = 0-467.
     // With refineLandmarks: additional 10 iris points → total 478.
     // Let's highlight them if they exist.
-    if (lm.length > 468) {
+    if (lm.length > IRIS_START) {
       ctx.fillStyle = '#ffcc00';
-      for (let i = 468; i < lm.length; i++) {
+      for (let i = IRIS_START; i < lm.length; i++) {
         const x = (1 - lm[i].x) * w;
         const y = lm[i].y * h;
         ctx.beginPath();
@@ -487,9 +488,9 @@ function onResults(results) {
   render();
 
   // Schedule next frame
-  if (video.readyState >= 2) {
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
     requestAnimationFrame(() => {
-      faceMesh.send({ image: video }).catch(() => {});
+      faceMesh.send({ image: video }).catch(err => console.warn('[FaceMesh] send error:', err));
     });
   }
 }

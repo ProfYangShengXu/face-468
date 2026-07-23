@@ -119,8 +119,12 @@ def load_and_animate(json_path):
     """读取 JSON → 创建面部 Mesh + Empty → 设置关键帧动画。"""
     print(f"[Face468] 加载 {json_path} …")
 
-    with open(json_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+        print(f"[Face468] ❌ 读取 JSON 失败: {e}")
+        return
 
     meta        = data.get('meta', {})
     frames      = data.get('frames', [])
