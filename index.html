@@ -444,27 +444,32 @@ function exportJSON() {
     tessellation = FaceMesh.FACEMESH_TESSELATION.map(p => [p[0], p[1]]);
   }
 
-  const avgFps = frames.length / (frames[frames.length - 1].t || (1 / EST_FPS));
-  const data = {
-    meta: {
-      version: '2.0',
-      landmark_count: frames[0].lm.length,
-      fps: Math.round(avgFps),
-      frame_count: frames.length,
-      duration_sec: +frames[frames.length - 1].t.toFixed(2)
-    },
-    tessellation: tessellation,
-    frames: frames
-  };
+  try {
+    const avgFps = frames.length / (frames[frames.length - 1].t || (1 / EST_FPS));
+    const data = {
+      meta: {
+        version: '2.0',
+        landmark_count: frames[0].lm.length,
+        fps: Math.round(avgFps),
+        frame_count: frames.length,
+        duration_sec: +frames[frames.length - 1].t.toFixed(2)
+      },
+      tessellation: tessellation,
+      frames: frames
+    };
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'face_capture.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('✅ 已导出 face_capture.json');
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'face_capture.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ 已导出 face_capture.json');
+  } catch (err) {
+    showToast('❌ 导出失败: ' + err.message);
+    console.error('[Face468] export error:', err);
+  }
 }
 
 // ──────────────────────────────────────────────
@@ -561,8 +566,6 @@ btnExport.addEventListener('click', exportJSON);
 btnClear.addEventListener('click', () => {
   buffer = [];
   updateStats();
-  statFrames.textContent = '0';
-  statSec.textContent = '0.0';
   showToast('🗑 已清空');
 });
 

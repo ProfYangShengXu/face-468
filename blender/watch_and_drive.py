@@ -305,7 +305,7 @@ def watch_loop():
             _watch_last_mtime = mtime
             print(f"[Face468] 🔄 文件更新，自动重载 …")
             load_and_animate(WATCH_PATH)
-    except FileNotFoundError:
+    except OSError:
         pass
     return WATCH_INTERVAL
 
