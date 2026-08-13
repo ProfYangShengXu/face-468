@@ -265,6 +265,7 @@ let showDots = false;
 let fpsCounter = { frames: 0, lastTime: performance.now(), value: 0 };
 const EST_FPS = 30;        // estimated FPS for buffer size calculation
 const IRIS_START = 468;    // iris landmark index start (with refineLandmarks)
+const FPS_UPDATE_MS = 500; // FPS 统计刷新间隔
 
 // ──────────────────────────────────────────────
 //  DOM refs
@@ -319,7 +320,7 @@ function tickFPS() {
   fpsCounter.frames++;
   const now = performance.now();
   const elapsed = now - fpsCounter.lastTime;
-  if (elapsed >= 500) {
+  if (elapsed >= FPS_UPDATE_MS) {
     fpsCounter.value = Math.round(fpsCounter.frames / (elapsed / 1000));
     fpsCounter.frames = 0;
     fpsCounter.lastTime = now;
@@ -379,11 +380,7 @@ function render() {
       ctx.arc(x, y, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Highlight iris landmarks (indices 468-477 if refineLandmarks adds them)
-    // Actually MediaPipe Face Mesh has exactly 468 landmarks with refineLandmarks
-    // The indices 468-477 are the iris landmarks. Standard 468 = 0-467.
-    // With refineLandmarks: additional 10 iris points → total 478.
-    // Let's highlight them if they exist.
+    // 高亮虹膜关键点（refineLandmarks 附加 10 点，索引 468-477）
     if (lm.length > IRIS_START) {
       ctx.fillStyle = '#ffcc00';
       for (let i = IRIS_START; i < lm.length; i++) {
@@ -465,6 +462,7 @@ function exportJSON() {
     a.download = 'face_capture.json';
     a.click();
     URL.revokeObjectURL(url);
+    a.remove();
     showToast('✅ 已导出 face_capture.json');
   } catch (err) {
     showToast('❌ 导出失败: ' + err.message);
