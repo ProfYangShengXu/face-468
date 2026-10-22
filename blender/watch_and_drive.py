@@ -54,8 +54,11 @@ class Face468_OT_Import(bpy.types.Operator):
     bl_label = "导入 Face 468 JSON"
     bl_options = {'REGISTER', 'UNDO'}
 
+    # type: ignore  — bpy 注解在运行时是函数调用，静态检查器会误报
     filepath: bpy.props.StringProperty(subtype="FILE_PATH")  # type: ignore
-    filter_glob: bpy.props.StringProperty(default="*.json", options={'HIDDEN'})  # type: ignore
+    filter_glob: bpy.props.StringProperty(  # type: ignore
+        default="*.json", options={'HIDDEN'}
+    )
 
     def execute(self, context):
         if not self.filepath:
@@ -122,7 +125,7 @@ def load_and_animate(json_path):
     try:
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+    except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
         print(f"[Face468] ❌ 读取 JSON 失败: {e}")
         return
 
@@ -149,6 +152,9 @@ def load_and_animate(json_path):
     mesh_data = bpy.data.meshes.new(f"{MESH_NAME}_data")
     # 从第一帧创建初始顶点
     first_lm = frames[0]['lm']
+    if len(first_lm) < lm_count:
+        print(f"[Face468] ⚠ 首帧仅 {len(first_lm)} 个关键点，少于 meta 声明的 {lm_count}")
+        lm_count = len(first_lm)
     verts = [mediapipe_to_blender(lm) for lm in first_lm]
     mesh_data.from_pydata(verts, [], tessellation)  # 顶点, [], 边
     mesh_data.update()
@@ -182,7 +188,7 @@ def load_and_animate(json_path):
         obj.empty_display_type = 'PLAIN_AXES'
         obj.empty_display_size = 0.005
         obj.show_name = False
-        obj.location = verts[i]
+        obj.location = verts[i] if i < len(verts) else (0.0, 0.0, 0.0)
         empties.append(obj)
 
     # ── 3. 关键部位标记球 ──
@@ -198,7 +204,7 @@ def load_and_animate(json_path):
     }
     markers = {}
     for name, (idx, color) in FEATURE_POINTS.items():
-        if idx >= lm_count:
+        if idx >= min(lm_count, len(verts)):
             continue
         bpy.ops.mesh.primitive_uv_sphere_add(radius=0.004, location=verts[idx])
         sphere = bpy.context.object
@@ -259,7 +265,7 @@ def load_and_animate(json_path):
             mesh_data.vertices[i].co = mediapipe_to_blender(lm)
     mesh_data.update()
 
-    # ── 5. 插值类型 ──
+    # ── 6. 插值类型 ──
     def set_interp(action):
         curves = getattr(action, 'fcurves', None)
         if curves is None:
@@ -301,9 +307,10 @@ def watch_loop():
     global _watch_last_mtime
     try:
         mtime = os.path.getmtime(WATCH_PATH)
+        # 仅在 mtime 前进时重载（首次基准由 main() 初始化）
         if mtime > _watch_last_mtime:
             _watch_last_mtime = mtime
-            print(f"[Face468] 🔄 文件更新，自动重载 …")
+            print("[Face468] 🔄 文件更新，自动重载 …")
             load_and_animate(WATCH_PATH)
     except OSError:
         pass
@@ -315,7 +322,12 @@ def watch_loop():
 # ═══════════════════════════════════════════════
 
 def main():
-    bpy.utils.register_class(Face468_OT_Import)
+    # 避免重复注册导致的 RuntimeError（脚本可被多次 Run Script）
+    try:
+        bpy.utils.register_class(Face468_OT_Import)
+    except ValueError:
+        bpy.utils.unregister_class(Face468_OT_Import)
+        bpy.utils.register_class(Face468_OT_Import)
 
     if WATCH_MODE:
         global _watch_last_mtime
@@ -325,7 +337,7 @@ def main():
             load_and_animate(WATCH_PATH)
         else:
             print(f"[Face468] ⚠ 文件不存在，等待首次导出 …")
-        bpy.app.timers.register(watch_loop)
+        bpy.app.timers.register(watch_loop, first_interval=WATCH_INTERVAL)
     else:
         print("[Face468] 📂 请选择 face_capture.json …")
         bpy.ops.import_test.face468('INVOKE_DEFAULT')

@@ -253,6 +253,10 @@ button:active { transform: scale(0.96); }
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
 
 <script>
+// MediaPipe 版本号 — 与上方 <script> 标签保持一致
+const MEDIAPIPE_VERSION = '0.4.1633559619';
+const MEDIAPIPE_CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@${MEDIAPIPE_VERSION}`;
+
 // ──────────────────────────────────────────────
 //  STATE
 // ──────────────────────────────────────────────
@@ -442,14 +446,15 @@ function exportJSON() {
   }
 
   try {
-    const avgFps = frames.length / (frames[frames.length - 1].t || (1 / EST_FPS));
+    const lastT = frames[frames.length - 1].t;
+    const avgFps = frames.length / (lastT || (1 / EST_FPS));
     const data = {
       meta: {
         version: '2.0',
         landmark_count: frames[0].lm.length,
         fps: Math.round(avgFps),
         frame_count: frames.length,
-        duration_sec: +frames[frames.length - 1].t.toFixed(2)
+        duration_sec: +lastT.toFixed(2)
       },
       tessellation: tessellation,
       frames: frames
@@ -517,7 +522,7 @@ async function init() {
 
     // 2. MediaPipe Face Mesh
     faceMesh = new FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`
+      locateFile: (file) => `${MEDIAPIPE_CDN}/${file}`
     });
     faceMesh.setOptions({
       maxNumFaces: 1,
@@ -568,7 +573,7 @@ btnClear.addEventListener('click', () => {
 });
 
 bufferSlider.addEventListener('input', () => {
-  bufferSec = parseInt(bufferSlider.value);
+  bufferSec = parseInt(bufferSlider.value, 10);
   bufferLabel.textContent = bufferSec;
   // Trim existing buffer to new size
   const maxFrames = getMaxFrames();
@@ -581,6 +586,9 @@ chkDots.addEventListener('change', () => { showDots = chkDots.checked; });
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
+  // 输入控件获得焦点时不触发快捷键（避免与滑块/复选框冲突）
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
   switch (e.key.toLowerCase()) {
     case 'r': btnRec.click(); break;
     case 'e': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); exportJSON(); } break;
