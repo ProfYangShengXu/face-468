@@ -253,9 +253,11 @@ button:active { transform: scale(0.96); }
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
 
 <script>
-// MediaPipe 版本号 — 与上方 <script> 标签保持一致
+// MediaPipe 版本号 — 与上方 <script> 标签保持一致（仅此处引用，无重复常量）
 const MEDIAPIPE_VERSION = '0.4.1633559619';
 const MEDIAPIPE_CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@${MEDIAPIPE_VERSION}`;
+// 导出阶段文件名
+const JSON_FILENAME = 'face_capture.json';
 
 // ──────────────────────────────────────────────
 //  STATE
@@ -464,11 +466,11 @@ function exportJSON() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'face_capture.json';
+    a.download = JSON_FILENAME;
     a.click();
     URL.revokeObjectURL(url);
     a.remove();
-    showToast('✅ 已导出 face_capture.json');
+    showToast(`✅ 已导出 ${JSON_FILENAME}`);
   } catch (err) {
     showToast('❌ 导出失败: ' + err.message);
     console.error('[Face468] export error:', err);
@@ -540,7 +542,13 @@ async function init() {
     loading.classList.add('hidden');
     showToast('🚀 Face 468 就绪');
   } catch (err) {
-    loadMsg.innerHTML = `<span style="color:var(--danger)">❌ 初始化失败</span><br><small>${err.message}</small>`;
+    // getUserMedia 的 DOMException 可能无 message，按 name 给出可操作提示
+    const hint = err && err.name === 'NotAllowedError'
+      ? '摄像头权限被拒绝，请在浏览器地址栏授予权限后刷新'
+      : err && err.name === 'NotFoundError'
+        ? '未检测到可用摄像头设备'
+        : (err && err.message) || String(err);
+    loadMsg.innerHTML = `<span style="color:var(--danger)">❌ 初始化失败</span><br><small>${hint}</small>`;
     console.error(err);
   }
 }

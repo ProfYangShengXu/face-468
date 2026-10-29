@@ -33,8 +33,10 @@ OVERALL_SCALE = 2.0     # 整体放大倍数，改这一个就行
 PREFIX        = "LM"    # Empty 命名前缀
 MESH_NAME     = "FaceMesh"
 INTERPOLATION = 'LINEAR'
-MAX_LANDMARKS = 500       # 清理时遍历的最大 Empty 数量
-
+# 清理时遍历的最大 Empty 数量（超出 999 时命名会进位，MAX_LANDMARKS 需同步调大）
+MAX_LANDMARKS = 1000
+# 关键部位标记球半径（Blender 单位）
+MARKER_SPHERE_RADIUS = 0.004
 # 自动监听模式
 WATCH_MODE = False
 WATCH_PATH = os.path.join(
@@ -155,8 +157,9 @@ def load_and_animate(json_path):
     if len(first_lm) < lm_count:
         print(f"[Face468] ⚠ 首帧仅 {len(first_lm)} 个关键点，少于 meta 声明的 {lm_count}")
         lm_count = len(first_lm)
+    # 不创建默认 UV 贴图（tessellation 不是 UV 数据，传给它会让 from_pydata 误解）
     verts = [mediapipe_to_blender(lm) for lm in first_lm]
-    mesh_data.from_pydata(verts, [], tessellation)  # 顶点, [], 边
+    mesh_data.from_pydata(verts, [], tessellation)  # 顶点, 边, 面
     mesh_data.update()
 
     mesh_obj = bpy.data.objects.new(MESH_NAME, mesh_data)
@@ -169,7 +172,9 @@ def load_and_animate(json_path):
     if bsdf:
         bsdf.inputs['Base Color'].default_value = (0.0, 0.9, 0.3, 1.0)
         bsdf.inputs['Alpha'].default_value = 0.5
-    mat.blend_method = 'BLEND'
+    # BLEND 在 Blender 4.2+ 已移除，需兼容旧属性不存在的情况
+    if hasattr(mat, "blend_method"):
+        mat.blend_method = 'BLEND'
     mesh_obj.data.materials.append(mat)
 
     # 设置线框显示
@@ -206,7 +211,7 @@ def load_and_animate(json_path):
     for name, (idx, color) in FEATURE_POINTS.items():
         if idx >= min(lm_count, len(verts)):
             continue
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.004, location=verts[idx])
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=MARKER_SPHERE_RADIUS, location=verts[idx])
         sphere = bpy.context.object
         sphere.name = f"{PREFIX}_{name}"
         # 材质
@@ -215,8 +220,12 @@ def load_and_animate(json_path):
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
         if bsdf:
             bsdf.inputs['Base Color'].default_value = (*color, 1.0)
-            bsdf.inputs['Emission Color'].default_value = (*color, 1.0)
-            bsdf.inputs['Emission Strength'].default_value = 2.0
+            # 'Emission Color' 为 Blender 4.x+ 命名，旧版为 'Emission'
+            emit_key = 'Emission Color' if 'Emission Color' in bsdf.inputs else 'Emission'
+            if emit_key in bsdf.inputs:
+                bsdf.inputs[emit_key].default_value = (*color, 1.0)
+            if 'Emission Strength' in bsdf.inputs:
+                bsdf.inputs['Emission Strength'].default_value = 2.0
         sphere.data.materials.append(mat)
         markers[name] = sphere
     print(f"[Face468] {len(markers)} 个标记球 (鼻尖/嘴唇/眼角)")
@@ -285,7 +294,7 @@ def load_and_animate(json_path):
     except Exception as e:
         print(f"[Face468] ⚠ 插值设置跳过: {e}")
 
-    # ── 6. 选中网格，跳到首帧 ──
+    # ── 7. 选中网格，跳到首帧 ──
     bpy.context.scene.frame_set(0)
     bpy.ops.object.select_all(action='DESELECT')
     mesh_obj.select_set(True)
