@@ -430,6 +430,9 @@ function updateStats() {
   statFrames.textContent = buffer.length;
   if (buffer.length >= 2) {
     statSec.textContent = (buffer[buffer.length - 1].t - buffer[0].t).toFixed(1);
+  } else {
+    // 帧数不足时归零，避免清空后仍显示上一次的时长
+    statSec.textContent = '0.0';
   }
   btnExport.disabled = buffer.length === 0;
 }
