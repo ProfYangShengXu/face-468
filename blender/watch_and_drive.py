@@ -45,6 +45,17 @@ WATCH_PATH = os.path.join(
 )
 WATCH_INTERVAL = 1.0
 
+# 关键部位标记球：名称 → (landmark 索引, RGB)；模块级以便 clear_previous 复用
+FEATURE_POINTS = {
+    'nose_tip':      (1,   (1.0, 0.8, 0.2)),   # 金色鼻尖
+    'upper_lip':     (13,  (1.0, 0.2, 0.2)),   # 红上唇
+    'lower_lip':     (14,  (1.0, 0.3, 0.3)),   # 红下唇
+    'lip_left':      (61,  (1.0, 0.1, 0.1)),   # 深红左嘴角
+    'lip_right':     (291, (1.0, 0.1, 0.1)),   # 深红右嘴角
+    'left_eye':      (33,  (0.2, 0.6, 1.0)),   # 蓝左眼
+    'right_eye':     (263, (0.2, 0.6, 1.0)),   # 蓝右眼
+}
+
 
 # ═══════════════════════════════════════════════
 #  Operator 类
@@ -103,8 +114,12 @@ def clear_previous():
         if mesh_data and mesh_data.users == 0:
             bpy.data.meshes.remove(mesh_data)
 
+    # 清理标记球（PREFIX_<feature>，如 LM_nose_tip）——
+    # 它们不匹配下面的数字命名规则，漏清理会在每次重载后重复堆积
+    to_remove = [o for o in (bpy.data.objects.get(f"{PREFIX}_{n}")
+                             for n in FEATURE_POINTS) if o]
+
     # 清理 Empty
-    to_remove = []
     for i in range(MAX_LANDMARKS):
         name = f"{PREFIX}_{i:03d}"
         obj = bpy.data.objects.get(name)
@@ -113,7 +128,7 @@ def clear_previous():
     if to_remove:
         for obj in to_remove:
             bpy.data.objects.remove(obj, do_unlink=True)
-        print(f"[Face468] 清理了 {len(to_remove)} 个旧 Empty")
+        print(f"[Face468] 清理了 {len(to_remove)} 个旧对象")
 
 
 # ═══════════════════════════════════════════════
@@ -197,16 +212,6 @@ def load_and_animate(json_path):
         empties.append(obj)
 
     # ── 3. 关键部位标记球 ──
-    # MediaPipe landmark 索引 (近似)
-    FEATURE_POINTS = {
-        'nose_tip':      (1,   (1.0, 0.8, 0.2)),   # 金色鼻尖
-        'upper_lip':     (13,  (1.0, 0.2, 0.2)),   # 红上唇
-        'lower_lip':     (14,  (1.0, 0.3, 0.3)),   # 红下唇
-        'lip_left':      (61,  (1.0, 0.1, 0.1)),   # 深红左嘴角
-        'lip_right':     (291, (1.0, 0.1, 0.1)),   # 深红右嘴角
-        'left_eye':      (33,  (0.2, 0.6, 1.0)),   # 蓝左眼
-        'right_eye':     (263, (0.2, 0.6, 1.0)),   # 蓝右眼
-    }
     markers = {}
     for name, (idx, color) in FEATURE_POINTS.items():
         if idx >= min(lm_count, len(verts)):
@@ -346,6 +351,9 @@ def main():
             load_and_animate(WATCH_PATH)
         else:
             print(f"[Face468] ⚠ 文件不存在，等待首次导出 …")
+        # 脚本可被反复 Run Script，先注销旧 timer 否则会叠加多份监听
+        if bpy.app.timers.is_registered(watch_loop):
+            bpy.app.timers.unregister(watch_loop)
         bpy.app.timers.register(watch_loop, first_interval=WATCH_INTERVAL)
     else:
         print("[Face468] 📂 请选择 face_capture.json …")
