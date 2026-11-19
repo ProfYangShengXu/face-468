@@ -258,6 +258,8 @@ const MEDIAPIPE_VERSION = '0.4.1633559619';
 const MEDIAPIPE_CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@${MEDIAPIPE_VERSION}`;
 // 导出阶段文件名
 const JSON_FILENAME = 'face_capture.json';
+// refineLandmarks 追加的虹膜关键点数量（468 颗基础点 → 478）
+const IRIS_COUNT = 10;
 
 // ──────────────────────────────────────────────
 //  STATE
@@ -386,8 +388,8 @@ function render() {
       ctx.arc(x, y, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    // 高亮虹膜关键点（refineLandmarks 附加 10 点，索引 468-477）
-    if (lm.length > IRIS_START) {
+    // 高亮虹膜关键点（refineLandmarks 附加 IRIS_COUNT 个点，索引 468 起）
+    if (lm.length > IRIS_START + IRIS_COUNT) {
       ctx.fillStyle = '#ffcc00';
       for (let i = IRIS_START; i < lm.length; i++) {
         const x = (1 - lm[i].x) * w;

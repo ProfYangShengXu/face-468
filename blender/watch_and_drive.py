@@ -45,6 +45,11 @@ WATCH_PATH = os.path.join(
 )
 WATCH_INTERVAL = 1.0
 
+# Blender 4.x Principled BSDF 的发光颜色输入名（旧版为 'Emission'）
+EMISSION_COLOR_INPUT = 'Emission Color'
+# 标记球发光强度（Unitless，配合 Emission Strength 输入）
+MARKER_EMISSION_STRENGTH = 2.0
+
 # 关键部位标记球：名称 → (landmark 索引, RGB)；模块级以便 clear_previous 复用
 FEATURE_POINTS = {
     'nose_tip':      (1,   (1.0, 0.8, 0.2)),   # 金色鼻尖
@@ -225,12 +230,12 @@ def load_and_animate(json_path):
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
         if bsdf:
             bsdf.inputs['Base Color'].default_value = (*color, 1.0)
-            # 'Emission Color' 为 Blender 4.x+ 命名，旧版为 'Emission'
-            emit_key = 'Emission Color' if 'Emission Color' in bsdf.inputs else 'Emission'
+            # EMISSION_COLOR_INPUT 为 Blender 4.x+ 命名，旧版回退到 'Emission'
+            emit_key = EMISSION_COLOR_INPUT if EMISSION_COLOR_INPUT in bsdf.inputs else 'Emission'
             if emit_key in bsdf.inputs:
                 bsdf.inputs[emit_key].default_value = (*color, 1.0)
             if 'Emission Strength' in bsdf.inputs:
-                bsdf.inputs['Emission Strength'].default_value = 2.0
+                bsdf.inputs['Emission Strength'].default_value = MARKER_EMISSION_STRENGTH
         sphere.data.materials.append(mat)
         markers[name] = sphere
     print(f"[Face468] {len(markers)} 个标记球 (鼻尖/嘴唇/眼角)")
