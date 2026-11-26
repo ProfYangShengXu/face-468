@@ -389,7 +389,8 @@ function render() {
       ctx.fill();
     }
     // 高亮虹膜关键点（refineLandmarks 附加 IRIS_COUNT 个点，索引 468 起）
-    if (lm.length > IRIS_START + IRIS_COUNT) {
+    // 满点数恰为 IRIS_START + IRIS_COUNT，用 >= 否则第 470 号点永远不渲染
+    if (lm.length >= IRIS_START + IRIS_COUNT) {
       ctx.fillStyle = '#ffcc00';
       for (let i = IRIS_START; i < lm.length; i++) {
         const x = (1 - lm[i].x) * w;
@@ -454,14 +455,16 @@ function exportJSON() {
 
   try {
     const lastT = frames[frames.length - 1].t;
-    const avgFps = frames.length / (lastT || (1 / EST_FPS));
+    // 至少按一帧间隔兜底，避免单帧/零时长时 avgFps 被放大到荒谬值
+    const avgFps = lastT > 0 ? frames.length / lastT : EST_FPS;
     const data = {
       meta: {
         version: '2.0',
         landmark_count: frames[0].lm.length,
         fps: Math.round(avgFps),
         frame_count: frames.length,
-        duration_sec: +lastT.toFixed(2)
+        // 补下一帧间隔（normalizedBuffer 把首帧 t 归零，末帧 t 只到最后一次采样时刻）
+        duration_sec: lastT > 0 ? +(lastT + 1 / avgFps).toFixed(2) : 0
       },
       tessellation: tessellation,
       frames: frames
